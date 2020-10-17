@@ -17,4 +17,4 @@ client.connect()
 
 ## Article
 
-TODO
+https://blog.johannes-mittendorfer.com/artikel/2020/10/my-toothbrush-streams-gyroscope-data
