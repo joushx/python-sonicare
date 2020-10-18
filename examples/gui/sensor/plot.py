@@ -8,7 +8,7 @@ import time
 class PlotWidget(FigureCanvas):
     def __init__(self) -> None:
         super().__init__(Figure())
-        self.points = [5] * 500
+        self.points = []
 
         self.ax = self.figure.subplots()
 
@@ -17,6 +17,16 @@ class PlotWidget(FigureCanvas):
         self.points = self.points[-500:]
 
         self.ax.cla()
+        self.draw_data(points)
+
+        self.ax.legend()
+        self.draw()
+
+    def draw_data(self, points):
+        pass
+
+class GyroscopeWidget(PlotWidget):
+    def draw_data(self, points):
         self.ax.set_ylim((-32768,32768))
 
         self.ax.plot(list(map(lambda p: p.acceleration1, self.points)), "--", label="Acceleration X")
@@ -27,5 +37,12 @@ class PlotWidget(FigureCanvas):
         self.ax.plot(list(map(lambda p: p.gyro2, self.points)), label="Orientation Y")
         self.ax.plot(list(map(lambda p: p.gyro3, self.points)), label="Orientation Z")
 
-        self.ax.legend()
-        self.draw()
+class TemperatureWidget(PlotWidget):
+    def draw_data(self, points):
+        self.ax.set_ylim((0,40))
+        self.ax.plot(list(map(lambda p: p.temperature, self.points)), label="Temperature °C")
+
+class PressureWidget(PlotWidget):
+    def draw_data(self, points):
+        self.ax.plot(list(map(lambda p: p.pressure, self.points)), label="Pressure")
+        self.ax.plot(list(map(lambda p: p.alarm, self.points)), "--", label="Alarm")

@@ -6,7 +6,7 @@ sys.path.append(os.path.dirname(__file__) + "/../../")
 
 from sonicare import SonicareClient, SERVICES
 from explorer import ExplorerTab
-from gyro import GyroTab
+from sensor import SensorTab
 
 class SonicareApplication(QMainWindow):
     def __init__(self, mac):
@@ -40,7 +40,7 @@ class SonicareApplication(QMainWindow):
     def _build_tabs(self):
         self.tabs = QTabWidget()
         self.tabs.addTab(ExplorerTab(self.client), "Explorer")
-        self.tabs.addTab(GyroTab(self.client), "Gyroscope")
+        self.tabs.addTab(SensorTab(self.client), "Sensor")
         self.tabs.setEnabled(False)
         return self.tabs
 
