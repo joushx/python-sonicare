@@ -1,6 +1,9 @@
 import time
 import tkinter as tk
 import tkinter.ttk as ttk
+import os
+import sys
+sys.path.append("../..")
 
 from sonicare import SonicareClient, SERVICES
 
@@ -32,6 +35,9 @@ def generate_sections(root):
             row += 1
         
         w.pack(fill="both", expand="yes")
+
+def get_mac():
+    return os.environ['SONICARE_MAC']
         
 if __name__ == "__main__":
     root = tk.Tk()
@@ -46,7 +52,7 @@ if __name__ == "__main__":
     def disconnect():
         print("Disconnected")
 
-    client = SonicareClient(mac='<your-mac-address>', ready_callback=ready, error_callback=error, disconnect_callback=disconnect)
+    client = SonicareClient(mac=get_mac(), ready_callback=ready, error_callback=error, disconnect_callback=disconnect)
     button = tk.Button(root, text="Connect", command=lambda: client.connect())
     button.pack()
 

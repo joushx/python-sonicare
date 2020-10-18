@@ -1,4 +1,10 @@
+import sys
+sys.path.append("../..")
+import os
 from sonicare import SonicareClient
+
+def get_mac():
+    return os.environ['SONICARE_MAC']
 
 def ready():
     print("| Name |")
@@ -9,5 +15,5 @@ def ready():
 
         print("| {} |".format(method))
 
-client = SonicareClient(mac='<your-mac-address>', ready_callback=lambda: ready())
+client = SonicareClient(mac=get_mac(), ready_callback=lambda: ready())
 client.connect()
