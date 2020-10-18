@@ -9,5 +9,5 @@ def ready():
 
         print("| {} |".format(method))
 
-client = SonicareClient(mac='24:e5:aa:0d:81:26', ready_callback=lambda: ready())
+client = SonicareClient(mac='<your-mac-address>', ready_callback=lambda: ready())
 client.connect()

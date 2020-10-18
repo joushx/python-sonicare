@@ -40,7 +40,13 @@ if __name__ == "__main__":
         print("ready")
         generate_sections(root)
 
-    client = SonicareClient(mac='<your-mac-address>', ready_callback=lambda: ready())
+    def error():
+        print("Connection failed")
+
+    def disconnect():
+        print("Disconnected")
+
+    client = SonicareClient(mac='<your-mac-address>', ready_callback=ready, error_callback=error, disconnect_callback=disconnect)
     button = tk.Button(root, text="Connect", command=lambda: client.connect())
     button.pack()
 

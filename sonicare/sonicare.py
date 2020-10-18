@@ -4,18 +4,28 @@ from datetime import datetime
 import struct
 import time
 
-from .data import *
+from .data import SERVICES, PREFIX
+from .device import SonicareDevice
+from .enums import SonicareValueType
 
 class SonicareClient:
 
-    def __init__(self, mac, ready_callback): 
-        self.callback = ready_callback
+    def __init__(self, mac, ready_callback=None, error_callback=None, disconnect_callback=None):
+        self.ready_callback = ready_callback
         self.manager = gatt.DeviceManager(adapter_name='hci0')
-        self.device = SonicareDevice(self.on_ready, mac_address=mac, manager=self.manager)
+        self.device = SonicareDevice(
+            mac_address=mac, 
+            manager=self.manager, 
+            ready_callback=self.on_ready, 
+            error_callback=error_callback, 
+            disconnect_callback=disconnect_callback
+        )
     
     def on_ready(self):
         self._generate_methods()
-        self.callback()
+
+        if self.ready_callback:
+            self.ready_callback()
 
     def connect(self):
         self.device.connect()
@@ -94,39 +104,3 @@ class SonicareClient:
     def _get_characteristic(self, service_uuid, characteristic_uuid):
         service = self._get_service(service_uuid)
         return list(filter(lambda c: c.uuid == characteristic_uuid, service.characteristics))[0]
-
-class SonicareDevice(gatt.Device):
-
-    def __init__(self, ready_callback, mac_address, manager, managed=True):
-        super().__init__(mac_address, manager, managed)
-        self.ready_callback = ready_callback
-
-    def services_resolved(self):
-        super().services_resolved()
-        self.ready_callback()
-    
-    def characteristic_value_updated(self, characteristic, value):
-
-        if characteristic.uuid == PREFIX + "4130":
-            data_type = struct.unpack("<H", value[:2])[0]
-            counter = struct.unpack("<H", value[2:4])[0]
-
-            if data_type == 4:
-                v1 = struct.unpack("<h", value[4:6])[0]
-                v2 = struct.unpack("<h", value[6:8])[0]
-                v3 = struct.unpack("<h", value[8:10])[0]
-                v4 = struct.unpack("<h", value[10:12])[0]
-                v5 = struct.unpack("<h", value[12:14])[0]
-                v6 = struct.unpack("<h", value[14:16])[0]
-                print("Type: {:05} Counter: {:05} Acc1: {:05} Acc2: {:05} Acc3: {:05} X: {:05} Gyro2: {:05} Gyro3: {:05}".format(data_type, counter, v1, v2, v3, v4, v5, v6))
-
-            if data_type == 2:
-                pass
-                v1 = struct.unpack("<h", value[4:6])[0]
-                print("Type: {:05} Counter: {:05} V2: {:05}".format(data_type, counter, v1))
-            elif data_type == 1:
-                v1 = struct.unpack("<h", value[4:6])[0]
-                print(value[4:].hex() + " Type: {:05} Counter: {:05} V1: {:05}".format(data_type, counter, v1))
-        else:
-            print(value.hex())
-        
