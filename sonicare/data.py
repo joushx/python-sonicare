@@ -37,10 +37,10 @@ SERVICES = {
         }
     ),
     "0005": Service(
-        "0005",
+        "Gyro",
         {
             "4120": Characteristic("4120", SonicareValueType.INT16),
-            "4130": Characteristic("Gyro_Data", SonicareValueType.RAW),
+            "4130": Characteristic("Data", SonicareValueType.RAW),
             "4140": Characteristic("4140", SonicareValueType.RAW),
         }
     ),

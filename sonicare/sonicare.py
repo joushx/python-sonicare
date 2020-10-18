@@ -16,44 +16,28 @@ class SonicareClient:
         self.device = SonicareDevice(
             mac_address=mac, 
             manager=self.manager, 
-            ready_callback=self.on_ready, 
+            ready_callback=self._on_ready, 
             error_callback=error_callback, 
-            disconnect_callback=disconnect_callback
+            disconnect_callback=disconnect_callback,
+            notify_callback=self._on_notify
         )
-    
-    def on_ready(self):
+        self.notify_listeners = []
+
+    def connect(self):
+        self.device.connect()
+
+    def _on_ready(self):
         self._generate_methods()
 
         if self.ready_callback:
             self.ready_callback()
 
-    def connect(self):
-        self.device.connect()
-        
-    def get_gyro(self):
-        c = self._get_characteristic(PREFIX + "0005", PREFIX + "4130")
-        c.enable_notifications()
+    def _on_notify(self, uuid, value):
+        for listener in self.notify_listeners:
+            listener(uuid, value)
 
-    def get_sessions(self, data_type, id):
-
-        c = self._get_characteristic(PREFIX + "0004", PREFIX + "40e0")
-        c.enable_notifications()
-        c = self._get_characteristic(PREFIX + "0004", PREFIX + "4110")
-        c.enable_notifications()
-        c = self._get_characteristic(PREFIX + "0004", PREFIX + "4100")
-        c.enable_notifications()
-
-        print("write type")
-        c = self._get_characteristic(PREFIX + "0004", PREFIX + "40d5")
-        c.write_value([3])
-
-        print("write session id")
-        c = self._get_characteristic(PREFIX + "0004", PREFIX + "40e0")
-        c.write_value([0x40, 0x05])
-
-        print("write control")
-        c = self._get_characteristic(PREFIX + "0004", PREFIX + "4110")
-        c.write_value([0x00])
+    def add_notify_listener(self, callback):
+        self.notify_listeners.append(callback)
 
     def _generate_methods(self):
         for service in self.device.services:
@@ -70,12 +54,21 @@ class SonicareClient:
             if not characteristics_object:
                 continue
 
-            print(characteristic.__dict__)
-            method_name = "get_" + service_object.name.lower() + "_" + characteristics_object.name.lower()
-            setattr(self, method_name, self._create_get_value(characteristic, characteristics_object))
+            method_name = service_object.name.lower() + "_" + characteristics_object.name.lower()
+            self._create_get_method(method_name, characteristic, characteristics_object)
+            self._create_subscribe_method(method_name, characteristic, characteristics_object)
+
+    def _create_get_method(self, name, characteristic, characteristics_object):
+        setattr(self, "get_" + name, self._create_get_value(characteristic, characteristics_object))
+
+    def _create_subscribe_method(self, name, characteristic, characteristics_object):
+        setattr(self, "subscribe_" + name, self._create_notify(characteristic, characteristics_object))
 
     def _create_get_value(self, characteristic, characteristics_object):
         return lambda self: self._get_value(characteristic, characteristics_object)
+
+    def _create_notify(self, characteristic, characteristics_object):
+        return lambda self: self._notify(characteristic)
 
     def _get_value(self, characteristic, characteristics_object):
         value = characteristic.read_value()
@@ -98,6 +91,9 @@ class SonicareClient:
             return datetime.fromtimestamp(value[0] | value[1] << 8 | value[2] << 16 | value[3] << 24)
         elif valuetype == SonicareValueType.RAW:
             return list(map(lambda i: "{:02x}".format(int(i)), value))
+
+    def _notify(self, characteristic):
+        characteristic.enable_notifications()
 
     def _get_service(self, service_uuid):
         return list(filter(lambda s: s.uuid == service_uuid, self.device.services))[0]

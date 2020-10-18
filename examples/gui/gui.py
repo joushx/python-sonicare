@@ -6,6 +6,7 @@ sys.path.append(os.path.dirname(__file__) + "/../../")
 
 from sonicare import SonicareClient, SERVICES
 from explorer import ExplorerTab
+from gyro import GyroTab
 
 class SonicareApplication(QMainWindow):
     def __init__(self, mac):
@@ -27,9 +28,9 @@ class SonicareApplication(QMainWindow):
         layout = QVBoxLayout(widget)
         widget.setLayout(layout)
 
-        connect_button = QPushButton("Connect")
-        connect_button.clicked.connect(lambda: self._connect())
-        layout.addWidget(connect_button)
+        self.connect_button = QPushButton("Connect")
+        self.connect_button.clicked.connect(lambda: self._connect())
+        layout.addWidget(self.connect_button)
 
         tabs = self._build_tabs()
         layout.addWidget(tabs)
@@ -39,6 +40,7 @@ class SonicareApplication(QMainWindow):
     def _build_tabs(self):
         self.tabs = QTabWidget()
         self.tabs.addTab(ExplorerTab(self.client), "Explorer")
+        self.tabs.addTab(GyroTab(self.client), "Gyroscope")
         self.tabs.setEnabled(False)
         return self.tabs
 
@@ -47,10 +49,13 @@ class SonicareApplication(QMainWindow):
 
     def _on_ready(self):
         print("Ready")
+        self.connect_button.setEnabled(False)
         self.tabs.setEnabled(True)
 
     def _on_error(self):
+        self.connect_button.setEnabled(True)
         print("Connection failed")
 
     def _on_disconnect(self):
+        self.connect_button.setEnabled(True)
         print("Disconnected")
