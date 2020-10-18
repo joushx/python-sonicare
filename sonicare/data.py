@@ -1,5 +1,5 @@
 from .model import Service, Characteristic
-from .enums import *
+from .enums import SonicareState, SonicareBrushType, SonicareValueType, SonicareHandleState, SonicareBrushingMode, SonicareStrength
 
 PREFIX = "477ea600-a260-11e4-ae37-0002a5d5"
 
