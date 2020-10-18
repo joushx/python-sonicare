@@ -70,6 +70,7 @@ class SonicareClient:
             if not characteristics_object:
                 continue
 
+            print(characteristic.__dict__)
             method_name = "get_" + service_object.name.lower() + "_" + characteristics_object.name.lower()
             setattr(self, method_name, self._create_get_value(characteristic, characteristics_object))
 
