@@ -8,9 +8,10 @@ from .data import SERVICES, PREFIX
 from .device import SonicareDevice
 from .enums import SonicareValueType
 
-class SonicareClient:
+class SonicareClient(object):
 
     def __init__(self, mac, ready_callback=None, error_callback=None, disconnect_callback=None):
+        self._generate_methods()
         self.ready_callback = ready_callback
         self.manager = gatt.DeviceManager(adapter_name='hci0')
         self.device = SonicareDevice(
@@ -24,11 +25,10 @@ class SonicareClient:
         self.notify_listeners = []
 
     def connect(self):
+        "Created a new connection to the device specified"
         self.device.connect()
 
     def _on_ready(self):
-        self._generate_methods()
-
         if self.ready_callback:
             self.ready_callback()
 
@@ -40,45 +40,39 @@ class SonicareClient:
         self.notify_listeners.append(callback)
 
     def _generate_methods(self):
-        for service in self.device.services:
-            service_object = SERVICES.get(service.uuid[-4:])
+        for service_id in SERVICES:
+            self._generate_methods_for_service(service_id)
 
-            if not service_object:
-                continue
+    def _generate_methods_for_service(self, service_id):
+        service = SERVICES[service_id]
+        for characteristic_id in service.characteristics:
+            characteristic = service.characteristics[characteristic_id]
+            method_name = service.name.lower() + "_" + characteristic.name.lower()
+            self._create_get_method(method_name, service_id, characteristic_id, characteristic)
+            self._create_subscribe_method(method_name, service_id, characteristic_id)
 
-            self._generate_methods_for_service(service, service_object=service_object)
+    def _create_get_method(self, name, service_id, characteristic_id, description):
+        setattr(self, "get_" + name, self._create_get_value(service_id, characteristic_id, description))
 
-    def _generate_methods_for_service(self, service, service_object):
-        for characteristic in service.characteristics:
-            characteristics_object = service_object.characteristics.get(characteristic.uuid[-4:])
-            if not characteristics_object:
-                continue
 
-            method_name = service_object.name.lower() + "_" + characteristics_object.name.lower()
-            self._create_get_method(method_name, characteristic, characteristics_object)
-            self._create_subscribe_method(method_name, characteristic, characteristics_object)
+    def _create_subscribe_method(self, name, service_id, characteristic_id):
+        setattr(self, "subscribe_" + name, self._create_notify(service_id, characteristic_id))
 
-    def _create_get_method(self, name, characteristic, characteristics_object):
-        setattr(self, "get_" + name, self._create_get_value(characteristic, characteristics_object))
+    def _create_get_value(self, service_id, characteristic_id, description):
+        return lambda self: self._get_value(service_id, characteristic_id, description)
 
-    def _create_subscribe_method(self, name, characteristic, characteristics_object):
-        setattr(self, "subscribe_" + name, self._create_notify(characteristic, characteristics_object))
+    def _create_notify(self, service_id, characteristic_id):
+        return lambda self: self._notify(service_id, characteristic_id)
 
-    def _create_get_value(self, characteristic, characteristics_object):
-        return lambda self: self._get_value(characteristic, characteristics_object)
-
-    def _create_notify(self, characteristic, characteristics_object):
-        return lambda self: self._notify(characteristic)
-
-    def _get_value(self, characteristic, characteristics_object):
-        value = characteristic.read_value()
-        print(value)
-        valuetype = characteristics_object.data_type
+    def _get_value(self, service_id, characteristic_id, description):
+        characteristics_object = self._get_characteristic(PREFIX + service_id, PREFIX + characteristic_id)
+        value = characteristics_object.read_value()
+        valuetype = description.data_type
 
         if valuetype == SonicareValueType.INT8:
-            if characteristics_object.enum:
+            if description.enum:
                 int_value = int(value[0])
-                return characteristics_object.enum(int_value).name
+                return description.enum(int_value).name
 
             return int(value[0])
         elif valuetype == SonicareValueType.STRING:
@@ -92,8 +86,9 @@ class SonicareClient:
         elif valuetype == SonicareValueType.RAW:
             return list(map(lambda i: "{:02x}".format(int(i)), value))
 
-    def _notify(self, characteristic):
-        characteristic.enable_notifications()
+    def _notify(self, service_id, characteristic_id):
+        characteristic_object = self._get_characteristic(PREFIX + service_id, PREFIX + characteristic_id)
+        characteristic_object.enable_notifications()
 
     def _get_service(self, service_uuid):
         return list(filter(lambda s: s.uuid == service_uuid, self.device.services))[0]
