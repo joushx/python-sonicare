@@ -48,5 +48,5 @@ class ExplorerTab(QScrollArea):
 
     def _read_data(self, service, characteristic, row):
         read_fn = self.client.__dict__["get_" + service.lower() + "_" + characteristic.lower()]
-        response = read_fn(self.client)
+        response = read_fn()
         row.set_value(response)

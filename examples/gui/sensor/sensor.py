@@ -6,6 +6,10 @@ import struct
 from .model import GyroscopeFrame, TemperatureFrame, SensorFrameType, PressureFrame
 from .plot import GyroscopeWidget, TemperatureWidget, PressureWidget
 
+GYRO = 1
+TEMP = 1 << 1
+PRESSURE = 1 << 2
+
 class SensorTab(QWidget):
     def __init__(self, client):
         super().__init__()
@@ -23,6 +27,10 @@ class SensorTab(QWidget):
         start_button.clicked.connect(lambda: self._start())
         self.layout.addWidget(start_button)
 
+        stop_button = QPushButton("Stop")
+        stop_button.clicked.connect(lambda: self._stop())
+        self.layout.addWidget(stop_button)
+
         self.gyro_plot = GyroscopeWidget()
         self.layout.addWidget(self.gyro_plot)
 
@@ -34,7 +42,13 @@ class SensorTab(QWidget):
 
     def _start(self):
         self.client.add_notify_listener(self._on_data)
-        self.client.subscribe_sensor_data(self.client)
+        self.client.subscribe_sensor_data()
+        self.client.write_sensor_enable([GYRO | TEMP | PRESSURE, 0])
+
+    def _stop(self):
+        self.client.remove_notify_listener(self._on_data)
+        self.client.unsubscribe_sensor_data()
+        self.client.write_sensor_enable([0, 0])
 
     def _on_data(self, uuid, value):
 
@@ -63,6 +77,7 @@ class SensorTab(QWidget):
 
         self._gyro_frames.append(frame)
 
+        # throttle graph update
         if len(self._gyro_frames) > 10:
             self.gyro_plot.add_points(self._gyro_frames)
             self._gyro_frames = []
@@ -76,9 +91,4 @@ class SensorTab(QWidget):
         pressure = struct.unpack("<h", value[4:6])[0]
         alarm = value[6]
         frame = PressureFrame(counter, pressure, alarm)
-        
-        self._pressure_frames.append(frame)
-
-        if len(self._pressure_frames) > 10:
-            self.pressure_plot.add_points(self._pressure_frames)
-            self._pressure_frames = []
+        self.pressure_plot.add_points(self._pressure_frames)

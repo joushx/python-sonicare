@@ -7,6 +7,7 @@ sys.path.append(os.path.dirname(__file__) + "/../../")
 from sonicare import SonicareClient, SERVICES
 from explorer import ExplorerTab
 from sensor import SensorTab
+import gatt
 
 class SonicareApplication(QMainWindow):
     def __init__(self, mac):
@@ -15,6 +16,7 @@ class SonicareApplication(QMainWindow):
 
         self.client = SonicareClient(
             mac=mac, 
+            device_manager=gatt.DeviceManager(adapter_name='hci0'),
             ready_callback=self._on_ready, 
             error_callback=self._on_error, 
             disconnect_callback=self._on_disconnect

@@ -39,7 +39,7 @@ SERVICES = {
     "0005": Service(
         "Sensor",
         {
-            "4120": Characteristic("4120", SonicareValueType.INT16),
+            "4120": Characteristic("Enable", SonicareValueType.INT16),
             "4130": Characteristic("Data", SonicareValueType.RAW),
             "4140": Characteristic("4140", SonicareValueType.RAW),
         }

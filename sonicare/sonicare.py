@@ -10,10 +10,10 @@ from .enums import SonicareValueType
 
 class SonicareClient(object):
 
-    def __init__(self, mac, ready_callback=None, error_callback=None, disconnect_callback=None):
+    def __init__(self, mac, device_manager: gatt.DeviceManager, ready_callback=None, error_callback=None, disconnect_callback=None):
         self._generate_methods()
         self.ready_callback = ready_callback
-        self.manager = gatt.DeviceManager(adapter_name='hci0')
+        self.manager = device_manager
         self.device = SonicareDevice(
             mac_address=mac, 
             manager=self.manager, 
@@ -39,6 +39,9 @@ class SonicareClient(object):
     def add_notify_listener(self, callback):
         self.notify_listeners.append(callback)
 
+    def remove_notify_listener(self, callback):
+        self.notify_listeners.remove(callback)
+
     def _generate_methods(self):
         for service_id in SERVICES:
             self._generate_methods_for_service(service_id)
@@ -48,23 +51,36 @@ class SonicareClient(object):
         for characteristic_id in service.characteristics:
             characteristic = service.characteristics[characteristic_id]
             method_name = service.name.lower() + "_" + characteristic.name.lower()
-            self._create_get_method(method_name, service_id, characteristic_id, characteristic)
+            self._create_read_method(method_name, service_id, characteristic_id, characteristic)
+            self._create_write_method(method_name, service_id,  characteristic_id, characteristic)
             self._create_subscribe_method(method_name, service_id, characteristic_id)
+            self._create_unsubscribe_method(method_name, service_id, characteristic_id)
 
-    def _create_get_method(self, name, service_id, characteristic_id, description):
-        setattr(self, "get_" + name, self._create_get_value(service_id, characteristic_id, description))
+    def _create_read_method(self, name, service_id, characteristic_id, description):
+        setattr(self, "read_" + name, self._create_read(service_id, characteristic_id, description))
 
+    def _create_write_method(self, name, service_id, characteristic_id, description):
+        setattr(self, "write_" + name, self._create_write(service_id, characteristic_id, description))
 
     def _create_subscribe_method(self, name, service_id, characteristic_id):
-        setattr(self, "subscribe_" + name, self._create_notify(service_id, characteristic_id))
+        setattr(self, "subscribe_" + name, self._create_subscribe(service_id, characteristic_id))
 
-    def _create_get_value(self, service_id, characteristic_id, description):
-        return lambda self: self._get_value(service_id, characteristic_id, description)
+    def _create_unsubscribe_method(self, name, service_id, characteristic_id):
+        setattr(self, "unsubscribe_" + name, self._create_unsubscribe(service_id, characteristic_id))
 
-    def _create_notify(self, service_id, characteristic_id):
-        return lambda self: self._notify(service_id, characteristic_id)
+    def _create_read(self, service_id, characteristic_id, description):
+        return lambda: self._read(service_id, characteristic_id, description)
 
-    def _get_value(self, service_id, characteristic_id, description):
+    def _create_write(self, service_id, characteristic_id, description):
+        return lambda value: self._write(service_id, characteristic_id, description, value)
+
+    def _create_subscribe(self, service_id, characteristic_id):
+        return lambda: self._subscribe(service_id, characteristic_id)
+
+    def _create_unsubscribe(self, service_id, characteristic_id):
+        return lambda: self._unsubscribe(service_id, characteristic_id)
+
+    def _read(self, service_id, characteristic_id, description):
         characteristics_object = self._get_characteristic(PREFIX + service_id, PREFIX + characteristic_id)
         value = characteristics_object.read_value()
         valuetype = description.data_type
@@ -86,9 +102,17 @@ class SonicareClient(object):
         elif valuetype == SonicareValueType.RAW:
             return list(map(lambda i: "{:02x}".format(int(i)), value))
 
-    def _notify(self, service_id, characteristic_id):
+    def _write(self, service_id, characteristic_id, description, value):
+        characteristics_object = self._get_characteristic(PREFIX + service_id, PREFIX + characteristic_id)
+        characteristics_object.write_value(value)
+
+    def _subscribe(self, service_id, characteristic_id):
         characteristic_object = self._get_characteristic(PREFIX + service_id, PREFIX + characteristic_id)
-        characteristic_object.enable_notifications()
+        characteristic_object.enable_notifications(True)
+
+    def _unsubscribe(self, service_id, characteristic_id):
+        characteristic_object = self._get_characteristic(PREFIX + service_id, PREFIX + characteristic_id)
+        characteristic_object.enable_notifications(False)
 
     def _get_service(self, service_uuid):
         return list(filter(lambda s: s.uuid == service_uuid, self.device.services))[0]
