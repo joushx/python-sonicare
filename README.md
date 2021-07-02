@@ -2,7 +2,16 @@
 
 Python library to communicate with a Phillips Sonicare toothbrush via Bluetooth Low Energy
 
-## Usage
+## GUI
+
+```
+python3 -m venv venv
+source ./venv/bin/activate
+pip install -r requirements.txt
+python examples/gui/run.py
+```
+
+## Lib
 
 All methods are auto-generated from the services definition (see `sonicare/data.py`) in the form `get_servicename_characteristicname`. E.g. `Handle` `Current_Time` can be called using `get_handle_current_time`.
 
@@ -15,7 +24,7 @@ client = SonicareClient(mac='<your-mac-address>', ready_callback=lambda: ready()
 client.connect()
 ```
 
-## Methods
+### Methods
 
 | Name |
 |---|

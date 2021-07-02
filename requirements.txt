@@ -1,1 +1,5 @@
 gatt == 0.2.7
+PyQt5 == 5.14.0
+dbus-python == 1.2.16
+pygobject == 3.40.1
+matplotlib == 3.3.4
