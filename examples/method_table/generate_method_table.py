@@ -10,7 +10,7 @@ def ready():
     print("| Name |")
     print("|---|")
     for method in client.__dict__.keys():
-        if not method.startswith("get"):
+        if not method.startswith("read"):
             continue
 
         print("| {} |".format(method))

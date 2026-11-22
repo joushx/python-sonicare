@@ -1,12 +1,9 @@
 import gatt
-import sys
 from datetime import datetime
-import struct
-import time
 
-from .data import SERVICES, PREFIX
+from .codec import decode, encode
+from .data import SERVICES
 from .device import SonicareDevice
-from .enums import SonicareValueType
 
 class SonicareClient(object):
 
@@ -81,42 +78,33 @@ class SonicareClient(object):
         return lambda: self._unsubscribe(service_id, characteristic_id)
 
     def _read(self, service_id, characteristic_id, description):
-        characteristics_object = self._get_characteristic(PREFIX + service_id, PREFIX + characteristic_id)
+        characteristics_object = self._get_characteristic(service_id, characteristic_id)
         value = characteristics_object.read_value()
-        valuetype = description.data_type
-
-        if valuetype == SonicareValueType.INT8:
-            if description.enum:
-                int_value = int(value[0])
-                return description.enum(int_value).name
-
-            return int(value[0])
-        elif valuetype == SonicareValueType.STRING:
-            return ''.join([str(v) for v in value])
-        elif valuetype == SonicareValueType.INT16:
-            return value[1] << 8 | value[0]
-        elif valuetype == SonicareValueType.INT32:
-            return value[0] | value[1] << 8 | value[2] << 16 | value[3] << 24
-        elif valuetype == SonicareValueType.TIMESTAMP:
-            return datetime.fromtimestamp(value[0] | value[1] << 8 | value[2] << 16 | value[3] << 24)
-        elif valuetype == SonicareValueType.RAW:
-            return list(map(lambda i: "{:02x}".format(int(i)), value))
+        if value is None:
+            raise IOError("{} cannot be read, it is probably notify or write only".format(description.name))
+        return decode(description, value)
 
     def _write(self, service_id, characteristic_id, description, value):
-        characteristics_object = self._get_characteristic(PREFIX + service_id, PREFIX + characteristic_id)
-        characteristics_object.write_value(value)
+        characteristics_object = self._get_characteristic(service_id, characteristic_id)
+        characteristics_object.write_value(encode(description, value))
 
     def _subscribe(self, service_id, characteristic_id):
-        characteristic_object = self._get_characteristic(PREFIX + service_id, PREFIX + characteristic_id)
+        characteristic_object = self._get_characteristic(service_id, characteristic_id)
         characteristic_object.enable_notifications(True)
 
     def _unsubscribe(self, service_id, characteristic_id):
-        characteristic_object = self._get_characteristic(PREFIX + service_id, PREFIX + characteristic_id)
+        characteristic_object = self._get_characteristic(service_id, characteristic_id)
         characteristic_object.enable_notifications(False)
 
-    def _get_service(self, service_uuid):
-        return list(filter(lambda s: s.uuid == service_uuid, self.device.services))[0]
+    def sync_time(self):
+        "Set the clock of the handle to the current time, like the app does after connecting"
+        self.write_handle_current_time(datetime.now())
 
-    def _get_characteristic(self, service_uuid, characteristic_uuid):
-        service = self._get_service(service_uuid)
-        return list(filter(lambda c: c.uuid == characteristic_uuid, service.characteristics))[0]
+    def _get_service(self, service_id):
+        uuid = SERVICES[service_id].uuid(service_id)
+        return next(s for s in self.device.services if s.uuid == uuid)
+
+    def _get_characteristic(self, service_id, characteristic_id):
+        service = self._get_service(service_id)
+        uuid = SERVICES[service_id].uuid(characteristic_id)
+        return next(c for c in service.characteristics if c.uuid == uuid)
