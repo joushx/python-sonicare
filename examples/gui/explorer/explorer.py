@@ -47,6 +47,9 @@ class ExplorerTab(QScrollArea):
         parent.addWidget(characteristic_row)
 
     def _read_data(self, service, characteristic, row):
-        read_fn = self.client.__dict__["get_" + service.lower() + "_" + characteristic.lower()]
-        response = read_fn()
-        row.set_value(response)
+        read_fn = getattr(self.client, "read_" + service.lower() + "_" + characteristic.lower())
+        try:
+            row.set_value(read_fn())
+        except Exception as error:
+            # e.g. notify-only characteristics cannot be read
+            row.set_value("Error: {}".format(error))

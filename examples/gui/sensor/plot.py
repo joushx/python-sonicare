@@ -29,13 +29,10 @@ class GyroscopeWidget(PlotWidget):
     def draw_data(self, points):
         self.ax.set_ylim((-32768,32768))
 
-        self.ax.plot(list(map(lambda p: p.acceleration1, self.points)), "--", label="Acceleration X")
-        self.ax.plot(list(map(lambda p: p.acceleration2, self.points)), "--", label="Acceleration Y")
-        self.ax.plot(list(map(lambda p: p.acceleration3, self.points)), "--", label="Acceleration Z")
-
-        self.ax.plot(list(map(lambda p: p.gyro1, self.points)), label="Orientation X")
-        self.ax.plot(list(map(lambda p: p.gyro2, self.points)), label="Orientation Y")
-        self.ax.plot(list(map(lambda p: p.gyro3, self.points)), label="Orientation Z")
+        for axis, name in enumerate("XYZ"):
+            self.ax.plot([p.acceleration[axis] for p in self.points], "--", label="Acceleration " + name)
+        for axis, name in enumerate("XYZ"):
+            self.ax.plot([p.gyro[axis] for p in self.points], label="Gyroscope " + name)
 
 class TemperatureWidget(PlotWidget):
     def draw_data(self, points):
